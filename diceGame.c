@@ -6,8 +6,11 @@
 #include <signal.h>
 #include <sys/time.h>
 
-void action(){}; // to avoid quitting when receiving a SIGUSR1
+/* Placeholder function to avoid quitting when receiving a SIGUSR1 */
+void action(){};
+/* Function executed by each player, to play the dice */
 void player(char *name, int playerId, int fd);
+/* Function executed by the referee, to print current scores and check for a winner */
 void checkWinner(int fd, char *name);
 
 int main(int argc, char *argv[])
