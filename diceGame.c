@@ -7,18 +7,14 @@
 #include <signal.h>
 #include <pthread.h>
 
-/* Write a C program, call it diceGame, to simulate a dice game between three players (processes) supervised by a referee (process). 
-The three players are named TATA, TITI and TOTO. 
-Unlike example 11 from chapter 6, these 4 processes should use a binary file, to store total scores. 
-In particular, the main function, run by the referee, should have the following steps */
-
 void action(){}; // to avoid quitting when receiving a SIGUSR1
 void player(char *name, int playerId, int fd);
+void checkWinner(int fd, char *name);
 void child(char *);
 
-int main(int argc, char *argv[]) // Referee
+int main(int argc, char *argv[])
 {
-    int fd; // file descriptor for the binary file sharedFile.bin
+    int fd;
     pid_t pid1, pid2, pid3;
     printf("DiceGame: a 3-players game with a referee\n");
 
@@ -30,16 +26,15 @@ int main(int argc, char *argv[]) // Referee
         exit(1);
     }*/
 
-    // Create a read/write binary file, call it sharedFile.bin, before any fork, and write three zero-integers using write. 
-    // The file sharedFilke.bin is like a 3-integer array, where 1st integer is the total of TATA, 2nd of TITI and 3rd of TOTO.
-
-    // Creating the binary file
+    // Creating the binary file before forking
     if ((fd = open("sharedFile.bin", O_CREAT | O_WRONLY | O_TRUNC, 0777)) == -1)
     {
         perror("File problem");
         exit(1);
-    } else
+    }
+    else
     {
+        // Writing three zero-integer values to the file
         int *threeZeros;
         threeZeros = malloc(3 * sizeof(int));
         threeZeros[0] = 0;
@@ -60,9 +55,7 @@ int main(int argc, char *argv[]) // Referee
         free(buffer);
     }
 
-    // Create the three players (processes) and each player should run the same function called 
-    // player(char *name, int playerId, int fd) (fd is the file descriptor)
-
+    // Creating the players and calling the common function "player"
     if ((pid1 = fork()) == 0)
         player("TATA", 1, fd);
     if ((pid2 = fork()) == 0)
@@ -73,24 +66,23 @@ int main(int argc, char *argv[]) // Referee
     signal(SIGUSR1, action);
     while (1)
     {
-        // Make the players play in order: TATA, TITI then TOTO.
-
-        // When a player has finished, the referee reads the new totals from sharedFile.bin, prints the player’s name, 
-        // its total points so far and sleeps for 2 seconds. If total exceeds winning score, 
+        // When a player has finished, the referee reads the new totals from sharedFile.bin, prints the player’s name,
+        // its total points so far and sleeps for 2 seconds. If total exceeds winning score,
         // the referee prints the name of winning player with its total score and kills all players and itself using kill().
         // WHERE EXACTLY TO PUT THIS PART? AFTER EACH PAUSE BELOW? BETTER CREATE A FUNCTION FOR THIS PIECE OF CODE TO AVOID REPETITION.
 
-        printf("\nReferee: TATA plays\n\n");
+        // Make the players play in order: TATA, TITI then TOTO
         fd = open("sharedFile.bin", O_RDONLY);
-        int buf;
-        read(fd, &buf, sizeof(int));
-        printf("Referee: TATA current score: %d\n", buf);
+        printf("\nReferee: TATA plays\n\n");
+        checkWinner(fd, "TATA");
         kill(pid1, SIGUSR1);
         pause();
         printf("\n\nReferee: TITI plays\n\n");
+        checkWinner(fd, "TITI");
         kill(pid2, SIGUSR1);
         pause();
         printf("\n\nReferee: TOTO plays\n\n");
+        checkWinner(fd, "TOTO");
         kill(pid3, SIGUSR1);
         pause();
     }
@@ -112,14 +104,16 @@ void player(char *name, int playerId, int fd)
             lseek(fd, 0, SEEK_SET);
             read(fd, oldScore, sizeof(int));
             printf("player: TATA old score: %d\n", oldScore[0]);
-        } else if (playerId == 2) // TITI
+        }
+        else if (playerId == 2) // TITI
         {
             lseek(fd, sizeof(int), SEEK_SET);
             read(fd, oldScore, sizeof(int));
             printf("player: TITI old score: %d\n", oldScore[0]);
-        } else // TOTO
+        }
+        else // TOTO
         {
-            lseek(fd, 2*sizeof(int), SEEK_SET); // NOT SURE ABOUT THE 2*
+            lseek(fd, 2 * sizeof(int), SEEK_SET);
             read(fd, oldScore, sizeof(int));
             printf("player: TOTO old score: %d\n", oldScore[0]);
         }
@@ -137,13 +131,15 @@ void player(char *name, int playerId, int fd)
         {
             lseek(fd, 0, SEEK_SET);
             write(fd, oldScore, sizeof(int));
-        } else if (playerId == 2) // TITI
+        }
+        else if (playerId == 2) // TITI
         {
             lseek(fd, sizeof(int), SEEK_SET);
             write(fd, oldScore, sizeof(int));
-        } else // TOTO
+        }
+        else // TOTO
         {
-            lseek(fd, 2*sizeof(int), SEEK_SET); // NOT SURE ABOUT THE 2*
+            lseek(fd, 2 * sizeof(int), SEEK_SET);
             write(fd, oldScore, sizeof(int));
         }
         close(fd);
@@ -153,13 +149,33 @@ void player(char *name, int playerId, int fd)
     }
 }
 
+void checkWinner(int fd, char *name)
+{
+    int currentScore[1];
+    read(fd, currentScore, sizeof(int));
+    if (strcmp(name, "TATA") == 0)
+        printf("Referee: TATA's current score: ");
+    else if (strcmp(name, "TITI") == 0)
+        printf("Referee: TITI's current score: ");
+    else
+        printf("Referee: TOTO's current score: ");
+    printf("%d\n", currentScore[0]);
+    sleep(2);
+    if (currentScore[0] >= 50)
+    {
+        printf("Referee: %s won the game\n", name);
+        kill(0, SIGTERM);
+    }
+    // kill(getppid(), SIGUSR1);
+}
+
 void child(char *s)
 {
     int points = 0, dice;
     long int ss = 0;
     while (1)
     {
-        signal(SIGUSR1, action); // block myself
+        signal(SIGUSR1, action);
         pause();
         printf("%s: playing my dice\n", s);
         dice = (int)time(&ss) % 10 + 1;
