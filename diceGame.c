@@ -80,19 +80,19 @@ void player(char *name, int playerId, int fd)
         {
             lseek(fd, 0, SEEK_SET);
             read(fd, oldScore, sizeof(int));
-            printf("TATA: my old score is: %d\n", oldScore[0]);
+            printf("TATA: my current score is: %d\n", oldScore[0]);
         }
         else if (playerId == 2) // TITI
         {
             lseek(fd, sizeof(int), SEEK_SET);
             read(fd, oldScore, sizeof(int));
-            printf("TITI: my old score is: %d\n", oldScore[0]);
+            printf("TITI: my current score is: %d\n", oldScore[0]);
         }
         else // TOTO
         {
             lseek(fd, 2 * sizeof(int), SEEK_SET);
             read(fd, oldScore, sizeof(int));
-            printf("TOTO: my old score is: %d\n", oldScore[0]);
+            printf("TOTO: my current score is: %d\n", oldScore[0]);
         }
         close(fd);
         // Playing the dice and printing its own name and the dice score
